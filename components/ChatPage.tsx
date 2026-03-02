@@ -33,7 +33,6 @@ export default function ChatPage({ aiContext }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Server calls Bubble API directly — we just track local state for the "✓ Quote updated" indicator
   const mergeQuote = useCallback(
     (update: PartialQuote): void => {
       setCurrentQuote((prev) => {
@@ -65,7 +64,6 @@ export default function ChatPage({ aiContext }: Props) {
     setInput("");
     setIsLoading(true);
 
-    // Placeholder assistant message
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
@@ -173,7 +171,6 @@ export default function ChatPage({ aiContext }: Props) {
     }
   };
 
-  // Auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -182,55 +179,124 @@ export default function ChatPage({ aiContext }: Props) {
   }, [input]);
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div
+      className="flex flex-col h-screen"
+      style={{ background: "linear-gradient(160deg, #0a0f1e 0%, #0f0a1e 50%, #0a1628 100%)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white shadow-sm flex-shrink-0">
-        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-          R
+      <div
+        className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        {/* AI avatar with gradient glow */}
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+          style={{
+            background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+            boxShadow: "0 0 16px rgba(124,58,237,0.5)",
+          }}
+        >
+          ✦
         </div>
         <div>
-          <div className="font-semibold text-slate-800 text-sm leading-tight">
+          <div className="font-semibold text-white text-sm leading-tight">
             {aiContext.company_name}
           </div>
-          <div className="text-xs text-slate-500">Roofing Quote Assistant</div>
+          <div className="text-xs flex items-center gap-1.5" style={{ color: "rgba(255,255,255,0.45)" }}>
+            <span
+              className="w-1.5 h-1.5 rounded-full inline-block"
+              style={{ background: "#34d399", boxShadow: "0 0 6px #34d399" }}
+            />
+            AI Quote Assistant
+          </div>
         </div>
         {quoteUpdateCount > 0 && (
-          <div className="ml-auto text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
-            Quote updated ({quoteUpdateCount}×)
+          <div
+            className="ml-auto text-xs font-medium px-2.5 py-1 rounded-full"
+            style={{
+              background: "rgba(52,211,153,0.12)",
+              border: "1px solid rgba(52,211,153,0.3)",
+              color: "#34d399",
+            }}
+          >
+            Draft updated {quoteUpdateCount}×
           </div>
         )}
       </div>
 
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
         {messages.map((msg, i) => (
           <div
             key={i}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
+            {/* AI avatar beside message */}
             {msg.role === "assistant" && (
-              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold mr-2 flex-shrink-0 mt-1">
-                AI
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold mr-2.5 flex-shrink-0 mt-1"
+                style={{
+                  background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+                  boxShadow: "0 0 10px rgba(124,58,237,0.4)",
+                }}
+              >
+                ✦
               </div>
             )}
+
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+              className="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
+              style={
                 msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-sm"
-                  : "bg-slate-100 text-slate-800 rounded-bl-sm"
-              }`}
+                  ? {
+                      background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+                      color: "#fff",
+                      borderBottomRightRadius: "4px",
+                      boxShadow: "0 4px 20px rgba(124,58,237,0.3)",
+                    }
+                  : {
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "rgba(255,255,255,0.88)",
+                      borderBottomLeftRadius: "4px",
+                    }
+              }
             >
               {msg.content}
+
+              {/* Typing dots */}
               {msg.role === "assistant" && i === messages.length - 1 && isLoading && !msg.content && (
                 <span className="inline-flex gap-1 items-center">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full animate-bounce"
+                    style={{ background: "#7c3aed", animationDelay: "0ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full animate-bounce"
+                    style={{ background: "#7c3aed", animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full animate-bounce"
+                    style={{ background: "#7c3aed", animationDelay: "300ms" }}
+                  />
                 </span>
               )}
+
+              {/* Quote updated badge */}
               {msg.quoteUpdated && (
-                <div className="mt-1.5 text-xs text-emerald-600 font-medium">
-                  ✓ Quote updated
+                <div
+                  className="mt-2 text-xs font-medium inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "rgba(52,211,153,0.12)",
+                    border: "1px solid rgba(52,211,153,0.25)",
+                    color: "#34d399",
+                  }}
+                >
+                  ✓ Draft updated
                 </div>
               )}
             </div>
@@ -240,8 +306,21 @@ export default function ChatPage({ aiContext }: Props) {
       </div>
 
       {/* Input bar */}
-      <div className="flex-shrink-0 border-t border-slate-200 bg-white px-4 py-3">
-        <div className="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2">
+      <div
+        className="flex-shrink-0 px-4 py-3"
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          backdropFilter: "blur(12px)",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+        }}
+      >
+        <div
+          className="flex items-end gap-2 rounded-2xl px-4 py-2.5"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
           <textarea
             ref={textareaRef}
             value={input}
@@ -250,21 +329,26 @@ export default function ChatPage({ aiContext }: Props) {
             placeholder="Describe the job, materials, address…"
             rows={1}
             disabled={isLoading}
-            className="flex-1 bg-transparent text-slate-800 text-sm resize-none outline-none placeholder:text-slate-400 min-h-[24px] max-h-[120px] leading-6 disabled:opacity-50"
+            className="flex-1 bg-transparent text-sm resize-none outline-none min-h-[24px] max-h-[120px] leading-6 disabled:opacity-40"
+            style={{ color: "rgba(255,255,255,0.9)" }}
           />
           <button
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 transition-colors"
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+              boxShadow: input.trim() ? "0 0 14px rgba(124,58,237,0.5)" : "none",
+            }}
             aria-label="Send"
           >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-white">
               <path d="M3.105 2.288a.75.75 0 00-.826.95l1.903 6.114h9.568l-1.52 1.52a.75.75 0 001.06 1.06l3-3a.75.75 0 000-1.06l-3-3a.75.75 0 10-1.06 1.06l1.52 1.52H5.182l-1.38-4.428a.75.75 0 00-.697-.536z" />
             </svg>
           </button>
         </div>
-        <p className="text-center text-xs text-slate-400 mt-1.5">
-          Press Enter to send · Shift+Enter for new line
+        <p className="text-center text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+          Enter to send · Shift+Enter for new line
         </p>
       </div>
     </div>
