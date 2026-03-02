@@ -19,7 +19,7 @@ import { createHmac } from "crypto";
  *     preferred_brand?: string,
  *     preferred_shingle?: string,
  *   },
- *   userId?: string,
+ *   quoteId?: string,
  *   expiresInHours?: number,       // default 24
  * }
  *
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       service_area: body.service_area ?? undefined,
       default_tax_rate: typeof body.default_tax_rate === "number" ? body.default_tax_rate : undefined,
       pricing_reference: body.pricing_reference ?? undefined,
-      userId: body.userId ?? undefined,
+      quoteId: body.quoteId ?? undefined,
       expires: Math.floor(Date.now() / 1000) + expiresInHours * 3600,
     };
 

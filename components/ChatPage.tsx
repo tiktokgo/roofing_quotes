@@ -23,11 +23,13 @@ export default function ChatPage({ aiContext }: Props) {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [currentQuote, setCurrentQuote] = useState<Partial<Quote>>({});
   const [quoteUpdateCount, setQuoteUpdateCount] = useState(0);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -170,6 +172,87 @@ export default function ChatPage({ aiContext }: Props) {
       handleSend();
     }
   };
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/parse-pdf", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Failed to parse PDF");
+      const { text } = await res.json() as { text: string };
+
+      // Send the extracted quote text directly as a user message
+      const userMsg: ChatMessage = {
+        role: "user",
+        content: `Here is an existing roofing quote I want you to review and improve:\n\n${text.slice(0, 8000)}`,
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setIsLoading(true);
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      const allMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const res2 = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: allMessages, aiContext, currentQuote }),
+      });
+      if (!res2.ok || !res2.body) throw new Error(`HTTP ${res2.status}`);
+
+      const reader = res2.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let hasQuoteUpdate = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+          let event: { type: string; content?: string; quote?: PartialQuote; message?: string };
+          try { event = JSON.parse(raw); } catch { continue; }
+          if (event.type === "text" && event.content) {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last?.role === "assistant") updated[updated.length - 1] = { ...last, content: last.content + event.content };
+              return updated;
+            });
+          } else if (event.type === "quote_update" && event.quote) {
+            mergeQuote(event.quote);
+            hasQuoteUpdate = true;
+          } else if (event.type === "done" && hasQuoteUpdate) {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last?.role === "assistant") updated[updated.length - 1] = { ...last, quoteUpdated: true };
+              return updated;
+            });
+          }
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: "assistant", content: `Error reading PDF: ${msg}` };
+        return updated;
+      });
+    } finally {
+      setIsUploading(false);
+      setIsLoading(false);
+    }
+  }, [messages, aiContext, currentQuote, mergeQuote]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -321,6 +404,34 @@ export default function ChatPage({ aiContext }: Props) {
             border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
+          {/* Hidden PDF file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+
+          {/* Upload button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || isUploading}
+            title="Improve current quote from PDF"
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+          >
+            {isUploading ? (
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="rgba(255,255,255,0.6)">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+
           <textarea
             ref={textareaRef}
             value={input}

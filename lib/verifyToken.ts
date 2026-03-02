@@ -7,18 +7,18 @@ export interface PricingReference {
   preferred_shingle?: string; // e.g. "Timberline HDZ"
 }
 
-/** What the AI needs + userId to associate updates with the right Bubble record */
+/** What the AI needs + quoteId to associate updates with the right Bubble record */
 export interface AIContext {
   company_name: string;
   user_name?: string;          // contractor's first name — for greeting
   service_area?: string;       // e.g. "Miami, FL" — for localized pricing
   default_tax_rate?: number;   // e.g. 0.07
   pricing_reference?: PricingReference;
-  userId?: string;             // Bubble user/company ID — sent with every webhook call
+  quoteId?: string;            // Bubble Quote record ID — returned with every webhook call
 }
 
 export interface TokenPayload extends AIContext {
-  userId?: string;
+  quoteId?: string;
   expires: number;
 }
 

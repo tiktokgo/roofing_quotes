@@ -11,7 +11,7 @@ const UPDATE_QUOTE_TOOL: OpenAI.Chat.ChatCompletionTool = {
   function: {
     name: "update_quote",
     description:
-      "Update the current roofing quote with new or changed fields. Call this every time new information is available.",
+      "Update the current roofing quote with new or changed fields. ONLY call this when the user provides new information that changes the quote.",
     parameters: {
       type: "object",
       properties: {
@@ -60,11 +60,43 @@ interface ChatMessage {
   content: string;
 }
 
-async function notifyBubble(userId: string | undefined, quote: PartialQuote) {
+/** Map internal PartialQuote to the slim fields Bubble expects */
+function toBubblePayload(quoteId: string | undefined, quote: PartialQuote): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (quoteId) payload.quoteId = quoteId;
+  if (quote.title) payload.title = quote.title;
+  if (quote.client?.name) payload.client_name = quote.client.name;
+  if (quote.client?.address) payload.client_address = quote.client.address;
+  if (quote.items && quote.items.length > 0) {
+    payload.items = quote.items
+      .filter((item) => item.name || item.description)
+      .map((item) => ({
+        name: item.name ?? "",
+        description: item.description ?? "",
+        price: item.total ?? 0,
+      }));
+  }
+  if (quote.total !== undefined) payload.total = quote.total;
+  if (quote.warranty) payload.warranty = quote.warranty;
+  if (quote.terms) payload.terms = quote.terms;
+  if (quote.comments !== undefined) payload.comments = quote.comments;
+  return payload;
+}
+
+async function notifyBubble(quoteId: string | undefined, quote: PartialQuote) {
   const url = process.env.BUBBLE_WEBHOOK_URL;
   const key = process.env.BUBBLE_API_KEY;
   if (!url) {
     console.warn("Bubble webhook skipped: BUBBLE_WEBHOOK_URL not set");
+    return;
+  }
+
+  const payload = toBubblePayload(quoteId, quote);
+
+  // Skip if nothing meaningful to send
+  const meaningfulKeys = Object.keys(payload).filter((k) => k !== "quoteId");
+  if (meaningfulKeys.length === 0) {
+    console.log("Bubble webhook skipped: no new data to send");
     return;
   }
 
@@ -75,7 +107,7 @@ async function notifyBubble(userId: string | undefined, quote: PartialQuote) {
         "Content-Type": "application/json",
         ...(key ? { Authorization: `Bearer ${key}` } : {}),
       },
-      body: JSON.stringify({ userId, quote }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -92,12 +124,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       messages: ChatMessage[];
-      aiContext: AIContext & { userId?: string };
+      aiContext: AIContext & { quoteId?: string };
       currentQuote?: Partial<Quote>;
     };
 
     const { messages, aiContext, currentQuote } = body;
-    const userId = aiContext.userId;
+    const quoteId = aiContext.quoteId;
 
     if (!messages || !aiContext) {
       return new Response(JSON.stringify({ error: "Missing messages or aiContext" }), {
@@ -169,8 +201,7 @@ export async function POST(req: NextRequest) {
               try {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
                 send({ type: "quote_update", quote: args });
-                // Await so the fetch completes before the stream closes
-                await notifyBubble(userId, args);
+                await notifyBubble(quoteId, args);
               } catch {
                 // malformed tool args — skip
               }

@@ -86,12 +86,17 @@ ${pricingLines.join("\n")}
 - Metal: Standing seam, corrugated, stone-coated steel
 - Flat: TPO, EPDM, modified bitumen, PVC
 
-## Call \`update_quote\` whenever:
-- A new quote draft is generated
-- The user provides client info (name, address, phone, email)
-- The user changes scope, materials, or dimensions
-- Any line item is added, removed, or modified
+## Call \`update_quote\` ONLY when:
+- A new quote draft is generated (first time)
+- The user provides NEW client info (name, address, phone, email) not already in the quote
+- The user changes scope, materials, dimensions, or any line item
 - The user approves or finalizes the quote
+
+## NEVER call \`update_quote\` when:
+- Answering a general question
+- Asking for more info (e.g. "What address?")
+- Repeating or summarizing information already in the quote
+- The user says something unrelated to quote changes (e.g. "thanks", "ok", "got it")
 
 Always merge new fields with existing ones — never remove fields the user already confirmed.`;
 }
