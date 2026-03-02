@@ -6,6 +6,18 @@ import type { Quote, PartialQuote } from "@/lib/quoteSchema";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+/** Keep at most the first `max` sentences from a block of text. */
+const firstSentences = (text: string, max: number): string => {
+  const trimmed = text.trim();
+  const re = /[^.!?]*[.!?]+(\s+|$)/g;
+  const sentences: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(trimmed)) !== null && sentences.length < max) {
+    sentences.push(m[0].trimEnd());
+  }
+  return sentences.length > 0 ? sentences.join(" ").trim() : trimmed.slice(0, 200).trim();
+};
+
 const UPDATE_QUOTE_TOOL: OpenAI.Chat.ChatCompletionTool = {
   type: "function",
   function: {
@@ -158,9 +170,9 @@ export async function POST(req: NextRequest) {
     });
 
     // Stream SSE back to client
+    // Text is buffered so we can truncate it when a tool call is detected —
+    // otherwise GPT-4o sends a long pre-tool list that should never appear in chat.
     const encoder = new TextEncoder();
-    let toolCallBuffer = "";
-    let toolCallName = "";
 
     const readable = new ReadableStream({
       async start(controller) {
@@ -168,14 +180,18 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         }
 
+        let textBuffer = "";
+        let toolCallBuffer = "";
+        let toolCallName = "";
+
         try {
           for await (const chunk of stream) {
             const delta = chunk.choices[0]?.delta;
             if (!delta) continue;
 
-            // Text content
+            // Buffer text — do NOT stream immediately
             if (delta.content) {
-              send({ type: "text", content: delta.content });
+              textBuffer += delta.content;
             }
 
             // Tool call accumulation
@@ -186,9 +202,13 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            // Finish reason: tool_calls → parse and emit quote_update
             const finishReason = chunk.choices[0]?.finish_reason;
+
             if (finishReason === "tool_calls" && toolCallName === "update_quote" && toolCallBuffer) {
+              // Truncate pre-tool text to 2 sentences max, then send quote_update
+              const brief = firstSentences(textBuffer, 2);
+              if (brief) send({ type: "text", content: brief });
+
               try {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
                 send({ type: "quote_update", quote: args });
@@ -198,6 +218,9 @@ export async function POST(req: NextRequest) {
               }
               toolCallBuffer = "";
               toolCallName = "";
+            } else if (finishReason === "stop") {
+              // Pure text response (no tool call) — send everything
+              if (textBuffer) send({ type: "text", content: textBuffer });
             }
           }
 
