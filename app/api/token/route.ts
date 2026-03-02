@@ -20,7 +20,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    // Bubble sometimes sends literal newlines/control chars inside JSON string values.
+    // Read as raw text, strip bad control characters, then parse manually.
+    const raw = await req.text();
+    const sanitized = raw
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ")
+      .replace(/\r?\n/g, " ");
+    const body = JSON.parse(sanitized);
 
     // Verify Bubble's API key (simple secret to prevent unauthorized token generation)
     if (API_KEY && body.api_key !== API_KEY) {
