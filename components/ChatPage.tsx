@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { CompanyData } from "@/lib/verifyToken";
+import type { AIContext } from "@/lib/verifyToken";
 import type { Quote, PartialQuote } from "@/lib/quoteSchema";
 
 interface ChatMessage {
@@ -11,13 +11,13 @@ interface ChatMessage {
 }
 
 interface Props {
-  companyContext: CompanyData;
+  aiContext: AIContext;
 }
 
 const WELCOME_MESSAGE =
   "Hi! I'm your roofing quote assistant. Tell me about the job — material, scope, address, or anything you have — and I'll generate a quote draft right away.";
 
-export default function ChatPage({ companyContext }: Props) {
+export default function ChatPage({ aiContext }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: WELCOME_MESSAGE },
   ]);
@@ -38,7 +38,7 @@ export default function ChatPage({ companyContext }: Props) {
   }, []);
 
   const mergeQuote = useCallback(
-    (update: PartialQuote, company: CompanyData): void => {
+    (update: PartialQuote): void => {
       setCurrentQuote((prev) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { items: updateItems, ...updateRest } = update;
@@ -46,7 +46,6 @@ export default function ChatPage({ companyContext }: Props) {
           ...prev,
           ...(updateRest as Partial<Quote>),
           client: { ...prev.client, ...update.client },
-          company: company,
           date: update.date ?? prev.date ?? new Date().toISOString().split("T")[0],
           status: update.status ?? prev.status ?? "draft",
         };
@@ -84,7 +83,7 @@ export default function ChatPage({ companyContext }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: allMessages,
-          companyContext,
+          aiContext,
           currentQuote,
         }),
       });
@@ -131,7 +130,7 @@ export default function ChatPage({ companyContext }: Props) {
               return updated;
             });
           } else if (event.type === "quote_update" && event.quote) {
-            mergeQuote(event.quote, companyContext);
+            mergeQuote(event.quote);
             hasQuoteUpdate = true;
           } else if (event.type === "done") {
             if (hasQuoteUpdate) {
@@ -169,7 +168,7 @@ export default function ChatPage({ companyContext }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, companyContext, currentQuote, mergeQuote]);
+  }, [input, isLoading, messages, aiContext, currentQuote, mergeQuote]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -195,7 +194,7 @@ export default function ChatPage({ companyContext }: Props) {
         </div>
         <div>
           <div className="font-semibold text-slate-800 text-sm leading-tight">
-            {companyContext.name}
+            {aiContext.company_name}
           </div>
           <div className="text-xs text-slate-500">Roofing Quote Assistant</div>
         </div>

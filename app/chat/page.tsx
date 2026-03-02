@@ -26,5 +26,5 @@ export default async function ChatRoute({ searchParams }: PageProps) {
     );
   }
 
-  return <ChatPage companyContext={result.payload.company} />;
+  return <ChatPage aiContext={result.payload} />;
 }

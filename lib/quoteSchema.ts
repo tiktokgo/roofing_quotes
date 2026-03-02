@@ -1,5 +1,3 @@
-import type { CompanyData } from "./verifyToken";
-
 export interface QuoteItem {
   description: string;
   quantity: number;
@@ -17,7 +15,7 @@ export interface Quote {
     phone?: string;
     email?: string;
   };
-  company: CompanyData;
+  // company display data lives in Bubble — not sent from the AI
   scope: string;
   items: QuoteItem[];
   subtotal: number;

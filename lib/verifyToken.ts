@@ -1,15 +1,22 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-export interface CompanyData {
-  name: string;
-  address?: string;
-  phone?: string;
-  license?: string;
-  insurance?: string;
+export interface PricingReference {
+  sq_ft_rate_installed?: number;
+  tear_off_rate?: number;
+  preferred_brand?: string;   // e.g. "GAF", "CertainTeed"
+  preferred_shingle?: string; // e.g. "Timberline HDZ"
 }
 
-export interface TokenPayload {
-  company: CompanyData;
+/** Only what the AI needs to generate better quote content */
+export interface AIContext {
+  company_name: string;
+  user_name?: string;          // contractor's first name — for greeting
+  service_area?: string;       // e.g. "Miami, FL" — for localized pricing
+  default_tax_rate?: number;   // e.g. 0.07
+  pricing_reference?: PricingReference;
+}
+
+export interface TokenPayload extends AIContext {
   userId?: string;
   expires: number;
 }
@@ -72,8 +79,8 @@ export function verifyToken(token: string): VerifyResult {
     return { valid: false, reason: "Token expired" };
   }
 
-  if (!payload.company?.name) {
-    return { valid: false, reason: "Missing company info in token" };
+  if (!payload.company_name) {
+    return { valid: false, reason: "Missing company_name in token" };
   }
 
   return { valid: true, payload };

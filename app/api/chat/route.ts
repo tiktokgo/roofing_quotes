@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
-import type { CompanyData } from "@/lib/verifyToken";
+import type { AIContext } from "@/lib/verifyToken";
 import type { Quote, PartialQuote } from "@/lib/quoteSchema";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -63,14 +63,14 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       messages: ChatMessage[];
-      companyContext: CompanyData;
+      aiContext: AIContext;
       currentQuote?: Partial<Quote>;
     };
 
-    const { messages, companyContext, currentQuote } = body;
+    const { messages, aiContext, currentQuote } = body;
 
-    if (!messages || !companyContext) {
-      return new Response(JSON.stringify({ error: "Missing messages or companyContext" }), {
+    if (!messages || !aiContext) {
+      return new Response(JSON.stringify({ error: "Missing messages or aiContext" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     const systemMessage: OpenAI.Chat.ChatCompletionMessageParam = {
       role: "system",
-      content: buildSystemPrompt(companyContext),
+      content: buildSystemPrompt(aiContext),
     };
 
     // Inject current quote state as a system context message if we have one
