@@ -11,8 +11,9 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Dynamic import avoids pdf-parse test-file loading issue in Next.js
-    const pdfParse = (await import("pdf-parse")).default;
+    // pdf-parse is a CJS module; use require to avoid ESM interop issues on Vercel
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
     const data = await pdfParse(buffer);
 
     return NextResponse.json({ text: data.text, pages: data.numpages });
