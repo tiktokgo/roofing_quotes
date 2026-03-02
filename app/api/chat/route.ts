@@ -62,10 +62,13 @@ interface ChatMessage {
 async function notifyBubble(userId: string | undefined, quote: PartialQuote) {
   const url = process.env.BUBBLE_WEBHOOK_URL;
   const key = process.env.BUBBLE_API_KEY;
-  if (!url) return;
+  if (!url) {
+    console.warn("Bubble webhook skipped: BUBBLE_WEBHOOK_URL not set");
+    return;
+  }
 
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -73,8 +76,14 @@ async function notifyBubble(userId: string | undefined, quote: PartialQuote) {
       },
       body: JSON.stringify({ userId, quote }),
     });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`Bubble webhook failed: HTTP ${res.status} — ${body}`);
+    } else {
+      console.log(`Bubble webhook OK: HTTP ${res.status}`);
+    }
   } catch (err) {
-    console.error("Bubble webhook error:", err);
+    console.error("Bubble webhook network error:", err);
   }
 }
 
@@ -159,8 +168,8 @@ export async function POST(req: NextRequest) {
               try {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
                 send({ type: "quote_update", quote: args });
-                // Fire-and-forget: push updated quote to Bubble API
-                notifyBubble(userId, args);
+                // Await so the fetch completes before the stream closes
+                await notifyBubble(userId, args);
               } catch {
                 // malformed tool args — skip
               }
