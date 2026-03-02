@@ -1,11 +1,11 @@
-import { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const url = process.env.BUBBLE_WEBHOOK_URL;
   const key = process.env.BUBBLE_API_KEY;
 
   if (!url) {
-    return Response.json({
+    return NextResponse.json({
       ok: false,
       error: "BUBBLE_WEBHOOK_URL is not set in environment variables",
     });
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     const responseText = await res.text().catch(() => "");
 
-    return Response.json({
+    return NextResponse.json({
       ok: res.ok,
       status: res.status,
       bubble_url: url,
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       payload_sent: testPayload,
     });
   } catch (err) {
-    return Response.json({
+    return NextResponse.json({
       ok: false,
       error: err instanceof Error ? err.message : String(err),
       bubble_url: url,
