@@ -31,9 +31,10 @@ const UPDATE_QUOTE_TOOL: OpenAI.Chat.ChatCompletionTool = {
           type: "array",
           items: {
             type: "object",
-            required: ["description", "quantity", "unit", "unit_price", "total"],
+            required: ["name", "description", "quantity", "unit", "unit_price", "total"],
             properties: {
-              description: { type: "string" },
+              name:        { type: "string", description: "Short item label e.g. 'Tear-off', 'GAF Timberline HDZ Shingles'" },
+              description: { type: "string", description: "Longer detail e.g. 'Removal and disposal of existing 3-tab shingles'" },
               quantity:    { type: "number" },
               unit:        { type: "string" },
               unit_price:  { type: "number" },

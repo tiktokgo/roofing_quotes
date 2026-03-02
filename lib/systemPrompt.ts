@@ -54,7 +54,7 @@ ${pricingLines.join("\n")}
 
 ## Quote generation rules
 1. **Generate immediately.** Any mention of a roofing job → call \`update_quote\` with a complete draft. Do not wait.
-2. **7–10 line items minimum.** Pick relevant items from:
+2. **7–10 line items minimum.** Each item needs both a short 'name' (e.g. "Tear-off") and a longer 'description' (e.g. "Removal and disposal of existing 3-tab asphalt shingles"). Pick relevant items from:
    - Permit & inspection fee
    - Tear-off and disposal of existing roofing
    - Decking repair / replacement (if applicable)

@@ -1,5 +1,6 @@
 export interface QuoteItem {
-  description: string;
+  name: string;        // short label e.g. "Tear-off", "GAF Timberline HDZ"
+  description: string; // longer detail e.g. "Removal and disposal of existing shingles"
   quantity: number;
   unit: string;       // e.g. "sq ft", "job", "sheet", "linear ft", "each"
   unit_price: number;
