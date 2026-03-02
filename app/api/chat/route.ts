@@ -59,15 +59,35 @@ interface ChatMessage {
   content: string;
 }
 
+async function notifyBubble(userId: string | undefined, quote: PartialQuote) {
+  const url = process.env.BUBBLE_WEBHOOK_URL;
+  const key = process.env.BUBBLE_API_KEY;
+  if (!url) return;
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(key ? { Authorization: `Bearer ${key}` } : {}),
+      },
+      body: JSON.stringify({ userId, quote }),
+    });
+  } catch (err) {
+    console.error("Bubble webhook error:", err);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       messages: ChatMessage[];
-      aiContext: AIContext;
+      aiContext: AIContext & { userId?: string };
       currentQuote?: Partial<Quote>;
     };
 
     const { messages, aiContext, currentQuote } = body;
+    const userId = aiContext.userId;
 
     if (!messages || !aiContext) {
       return new Response(JSON.stringify({ error: "Missing messages or aiContext" }), {
@@ -139,6 +159,8 @@ export async function POST(req: NextRequest) {
               try {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
                 send({ type: "quote_update", quote: args });
+                // Fire-and-forget: push updated quote to Bubble API
+                notifyBubble(userId, args);
               } catch {
                 // malformed tool args — skip
               }

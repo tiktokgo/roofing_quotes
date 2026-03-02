@@ -33,10 +33,7 @@ export default function ChatPage({ aiContext }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const notifyBubble = useCallback((quote: Partial<Quote>) => {
-    window.parent.postMessage({ type: "roofing-quote-update", quote }, "*");
-  }, []);
-
+  // Server calls Bubble API directly — we just track local state for the "✓ Quote updated" indicator
   const mergeQuote = useCallback(
     (update: PartialQuote): void => {
       setCurrentQuote((prev) => {
@@ -52,12 +49,11 @@ export default function ChatPage({ aiContext }: Props) {
         if (updateItems && updateItems.length > 0) {
           merged.items = updateItems as Quote["items"];
         }
-        notifyBubble(merged);
         return merged;
       });
       setQuoteUpdateCount((n) => n + 1);
     },
-    [notifyBubble]
+    []
   );
 
   const handleSend = useCallback(async () => {
