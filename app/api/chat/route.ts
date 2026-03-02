@@ -60,27 +60,25 @@ interface ChatMessage {
   content: string;
 }
 
-/** Map internal PartialQuote to the slim fields Bubble expects */
+/** Map internal PartialQuote to the slim fields Bubble expects — always all fields */
 function toBubblePayload(quote_id: string | undefined, quote: PartialQuote): Record<string, unknown> {
-  const payload: Record<string, unknown> = {};
-  if (quote_id) payload.quote_id = quote_id;
-  if (quote.title) payload.title = quote.title;
-  if (quote.client?.name) payload.client_name = quote.client.name;
-  if (quote.client?.address) payload.client_address = quote.client.address;
-  if (quote.items && quote.items.length > 0) {
-    payload.items = quote.items
+  return {
+    quote_id:       quote_id ?? "",
+    title:          quote.title ?? "",
+    client_name:    quote.client?.name ?? "",
+    client_address: quote.client?.address ?? "",
+    items: (quote.items ?? [])
       .filter((item) => item.name || item.description)
       .map((item) => ({
-        name: item.name ?? "",
+        name:        item.name ?? "",
         description: item.description ?? "",
-        price: item.total ?? 0,
-      }));
-  }
-  if (quote.total !== undefined) payload.total = quote.total;
-  if (quote.warranty) payload.warranty = quote.warranty;
-  if (quote.terms) payload.terms = quote.terms;
-  if (quote.comments !== undefined) payload.comments = quote.comments;
-  return payload;
+        price:       item.total ?? 0,
+      })),
+    total:    quote.total ?? 0,
+    warranty: quote.warranty ?? "",
+    terms:    quote.terms ?? "",
+    comments: quote.comments ?? "",
+  };
 }
 
 async function notifyBubble(quote_id: string | undefined, quote: PartialQuote) {
@@ -92,13 +90,6 @@ async function notifyBubble(quote_id: string | undefined, quote: PartialQuote) {
   }
 
   const payload = toBubblePayload(quote_id, quote);
-
-  // Skip if nothing meaningful to send
-  const meaningfulKeys = Object.keys(payload).filter((k) => k !== "quote_id");
-  if (meaningfulKeys.length === 0) {
-    console.log("Bubble webhook skipped: no new data to send");
-    return;
-  }
 
   try {
     const res = await fetch(url, {
