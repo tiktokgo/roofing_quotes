@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 // Full payload with every field the AI can send — used to initialize Bubble's workflow schema
 const FULL_PAYLOAD = {
-  userId: "bubble-user-id-123",
+  quote_id: "bubble-quote-record-123",
   quote: {
     title: "Roof Replacement — GAF Timberline HDZ — 123 Main St",
     date: "2026-03-02",

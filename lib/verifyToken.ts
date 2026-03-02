@@ -1,24 +1,15 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-export interface PricingReference {
-  sq_ft_rate_installed?: number;
-  tear_off_rate?: number;
-  preferred_brand?: string;   // e.g. "GAF", "CertainTeed"
-  preferred_shingle?: string; // e.g. "Timberline HDZ"
-}
-
-/** What the AI needs + quoteId to associate updates with the right Bubble record */
+/** What the AI needs to generate and update quotes */
 export interface AIContext {
   company_name: string;
-  user_name?: string;          // contractor's first name — for greeting
-  service_area?: string;       // e.g. "Miami, FL" — for localized pricing
-  default_tax_rate?: number;   // e.g. 0.07
-  pricing_reference?: PricingReference;
-  quoteId?: string;            // Bubble Quote record ID — returned with every webhook call
+  user_name?: string;     // contractor's first name — used in greeting
+  service_area?: string;  // company address / location — for localized context
+  company_info?: string;  // free-text: important notes, recent quotes, special instructions
+  quote_id?: string;      // Bubble Quote record ID — returned with every webhook call
 }
 
 export interface TokenPayload extends AIContext {
-  quoteId?: string;
   expires: number;
 }
 

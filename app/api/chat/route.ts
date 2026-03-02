@@ -61,9 +61,9 @@ interface ChatMessage {
 }
 
 /** Map internal PartialQuote to the slim fields Bubble expects */
-function toBubblePayload(quoteId: string | undefined, quote: PartialQuote): Record<string, unknown> {
+function toBubblePayload(quote_id: string | undefined, quote: PartialQuote): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
-  if (quoteId) payload.quoteId = quoteId;
+  if (quote_id) payload.quote_id = quote_id;
   if (quote.title) payload.title = quote.title;
   if (quote.client?.name) payload.client_name = quote.client.name;
   if (quote.client?.address) payload.client_address = quote.client.address;
@@ -83,7 +83,7 @@ function toBubblePayload(quoteId: string | undefined, quote: PartialQuote): Reco
   return payload;
 }
 
-async function notifyBubble(quoteId: string | undefined, quote: PartialQuote) {
+async function notifyBubble(quote_id: string | undefined, quote: PartialQuote) {
   const url = process.env.BUBBLE_WEBHOOK_URL;
   const key = process.env.BUBBLE_API_KEY;
   if (!url) {
@@ -91,10 +91,10 @@ async function notifyBubble(quoteId: string | undefined, quote: PartialQuote) {
     return;
   }
 
-  const payload = toBubblePayload(quoteId, quote);
+  const payload = toBubblePayload(quote_id, quote);
 
   // Skip if nothing meaningful to send
-  const meaningfulKeys = Object.keys(payload).filter((k) => k !== "quoteId");
+  const meaningfulKeys = Object.keys(payload).filter((k) => k !== "quote_id");
   if (meaningfulKeys.length === 0) {
     console.log("Bubble webhook skipped: no new data to send");
     return;
@@ -124,12 +124,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       messages: ChatMessage[];
-      aiContext: AIContext & { quoteId?: string };
+      aiContext: AIContext & { quote_id?: string };
       currentQuote?: Partial<Quote>;
     };
 
     const { messages, aiContext, currentQuote } = body;
-    const quoteId = aiContext.quoteId;
+    const quote_id = aiContext.quote_id;
 
     if (!messages || !aiContext) {
       return new Response(JSON.stringify({ error: "Missing messages or aiContext" }), {
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
               try {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
                 send({ type: "quote_update", quote: args });
-                await notifyBubble(quoteId, args);
+                await notifyBubble(quote_id, args);
               } catch {
                 // malformed tool args — skip
               }

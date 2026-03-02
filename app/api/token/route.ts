@@ -4,23 +4,17 @@ import { createHmac } from "crypto";
 /**
  * POST /api/token
  *
- * Bubble calls this to get a signed token for a specific contractor.
+ * Bubble calls this to get a signed token for a specific contractor session.
  *
  * Body:
  * {
- *   api_key: string,
- *   company_name: string,          // required — used in quote content
- *   user_name?: string,            // contractor's first name
- *   service_area?: string,         // e.g. "Miami, FL"
- *   default_tax_rate?: number,     // e.g. 0.07
- *   pricing_reference?: {
- *     sq_ft_rate_installed?: number,
- *     tear_off_rate?: number,
- *     preferred_brand?: string,
- *     preferred_shingle?: string,
- *   },
- *   quoteId?: string,
- *   expiresInHours?: number,       // default 24
+ *   api_key: string,          // must match TOKEN_API_KEY env var
+ *   company_name: string,     // required — displayed in chat header
+ *   user_name?: string,       // contractor's first name — used in greeting
+ *   service_area?: string,    // company address / location
+ *   company_info?: string,    // free-text: important notes, recent quotes, special instructions
+ *   quote_id?: string,        // Bubble Quote record ID — echoed back with every webhook call
+ *   expiresInHours?: number,  // default 24
  * }
  *
  * Returns: { token }
@@ -54,17 +48,16 @@ export async function POST(req: NextRequest) {
 
     const payload = {
       company_name: body.company_name,
-      user_name: body.user_name ?? undefined,
+      user_name:    body.user_name    ?? undefined,
       service_area: body.service_area ?? undefined,
-      default_tax_rate: typeof body.default_tax_rate === "number" ? body.default_tax_rate : undefined,
-      pricing_reference: body.pricing_reference ?? undefined,
-      quoteId: body.quoteId ?? undefined,
+      company_info: body.company_info ?? undefined,
+      quote_id:     body.quote_id     ?? undefined,
       expires: Math.floor(Date.now() / 1000) + expiresInHours * 3600,
     };
 
-    const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const header     = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
     const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    const sig = createHmac("sha256", SHARED_SECRET)
+    const sig        = createHmac("sha256", SHARED_SECRET)
       .update(`${header}.${payloadB64}`)
       .digest("base64url");
 
