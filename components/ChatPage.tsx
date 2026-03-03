@@ -182,7 +182,7 @@ export default function ChatPage({ aiContext }: Props) {
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = "";
-    if (!file) return;
+    if (!file || isLoading || isUploading) return;
 
     // Transition to chat mode immediately and show scanning feedback
     setChatStarted(true);
@@ -205,7 +205,7 @@ export default function ChatPage({ aiContext }: Props) {
       // Hidden API message with full PDF content; display message already shown above
       const apiUserMsg = {
         role: "user" as const,
-        content: `Here is an existing roofing quote I want you to review and improve:\n\n${text.slice(0, 8000)}`,
+        content: `Here is an existing roofing quote I want you to review and improve. The PDF may only list a few items — you MUST keep them all AND add every missing standard item (permit, tear-off, decking inspection, underlayment, ice & water shield, drip edge, pipe flashings, ridge cap, labor, cleanup) to reach at least 8 line items total:\n\n${text.slice(0, 8000)}`,
       };
       setIsLoading(true);
       // Replace scanning message with empty AI response placeholder (streaming will fill it)
@@ -230,7 +230,7 @@ export default function ChatPage({ aiContext }: Props) {
       setIsUploading(false);
       setIsLoading(false);
     }
-  }, [messages, streamChat]);
+  }, [messages, streamChat, isLoading, isUploading]);
 
   const handleVoice = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
