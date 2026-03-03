@@ -8,6 +8,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   quoteUpdated?: boolean;
+  webhookStatus?: { ok: boolean; message: string };
 }
 
 interface Props {
@@ -84,10 +85,22 @@ export default function ChatPage({ aiContext }: Props) {
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
           if (!raw) continue;
-          let event: { type: string; content?: string; quote?: PartialQuote; message?: string };
+          let event: { type: string; content?: string; quote?: PartialQuote; message?: string; ok?: boolean };
           try { event = JSON.parse(raw); } catch { continue; }
 
-          if (event.type === "text" && event.content) {
+          if (event.type === "webhook_status") {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last?.role === "assistant") {
+                updated[updated.length - 1] = {
+                  ...last,
+                  webhookStatus: { ok: event.ok as boolean, message: event.message as string },
+                };
+              }
+              return updated;
+            });
+          } else if (event.type === "text" && event.content) {
             setMessages((prev) => {
               const updated = [...prev];
               const last = updated[updated.length - 1];
@@ -525,6 +538,17 @@ export default function ChatPage({ aiContext }: Props) {
                       style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.25)", color: "#34d399" }}
                     >
                       ✓ Draft updated
+                    </div>
+                  )}
+                  {msg.webhookStatus && (
+                    <div
+                      className="mt-1 text-xs font-medium inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                      style={msg.webhookStatus.ok
+                        ? { background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", color: "#34d399" }
+                        : { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }
+                      }
+                    >
+                      {msg.webhookStatus.ok ? "✓ Sent to Bubble" : `✗ ${msg.webhookStatus.message}`}
                     </div>
                   )}
                 </div>

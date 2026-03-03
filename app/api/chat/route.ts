@@ -95,12 +95,15 @@ function toBubblePayload(quote_id: string | undefined, quote: PartialQuote): Rec
   return payload;
 }
 
-async function notifyBubble(quote_id: string | undefined, quote: PartialQuote) {
+async function notifyBubble(
+  quote_id: string | undefined,
+  quote: PartialQuote
+): Promise<{ ok: boolean; message: string }> {
   const url = process.env.BUBBLE_WEBHOOK_URL;
   const key = process.env.BUBBLE_API_KEY;
   if (!url) {
     console.warn("Bubble webhook skipped: BUBBLE_WEBHOOK_URL not set");
-    return;
+    return { ok: false, message: "BUBBLE_WEBHOOK_URL not configured in Vercel" };
   }
 
   const payload = toBubblePayload(quote_id, quote);
@@ -109,7 +112,7 @@ async function notifyBubble(quote_id: string | undefined, quote: PartialQuote) {
   const meaningfulKeys = Object.keys(payload).filter((k) => k !== "quote_id");
   if (meaningfulKeys.length === 0) {
     console.log("Bubble webhook skipped: no new data to send");
-    return;
+    return { ok: false, message: "No data to send" };
   }
 
   try {
@@ -125,11 +128,14 @@ async function notifyBubble(quote_id: string | undefined, quote: PartialQuote) {
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       console.error(`Bubble webhook failed: HTTP ${res.status} — ${body}`);
-    } else {
-      console.log(`Bubble webhook OK: HTTP ${res.status}`);
+      return { ok: false, message: `HTTP ${res.status}: ${body.slice(0, 120)}` };
     }
+    console.log(`Bubble webhook OK: HTTP ${res.status}`);
+    return { ok: true, message: "ok" };
   } catch (err) {
-    console.error("Bubble webhook network error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Bubble webhook network error:", msg);
+    return { ok: false, message: msg };
   }
 }
 
@@ -222,7 +228,8 @@ export async function POST(req: NextRequest) {
               try {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
                 send({ type: "quote_update", quote: args });
-                await notifyBubble(quote_id, args);
+                const webhookResult = await notifyBubble(quote_id, args);
+                send({ type: "webhook_status", ok: webhookResult.ok, message: webhookResult.message });
               } catch (e) {
                 console.warn("Malformed tool args from GPT:", toolCallBuffer.slice(0, 200), e);
               }
