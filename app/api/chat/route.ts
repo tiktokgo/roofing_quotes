@@ -274,7 +274,8 @@ export async function POST(req: NextRequest) {
                     tool_choice: { type: "function", function: { name: "update_quote" } } as const,
                     stream: false,
                   });
-                  const toolCall = forceResult.choices[0]?.message?.tool_calls?.[0];
+                  const toolCall = forceResult.choices[0]?.message?.tool_calls?.[0] as
+                    { function?: { arguments?: string } } | undefined;
                   if (toolCall?.function?.arguments) {
                     const args = JSON.parse(toolCall.function.arguments) as PartialQuote;
                     const hasNewData = args.client?.name || args.client?.address || args.total || args.comments;
