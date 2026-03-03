@@ -3,7 +3,10 @@ const nextConfig = {
   // Keep pdf-parse (and its pdfjs-dist dependency) as external modules so that
   // relative file paths inside the package (e.g. './pdf.worker.mjs') resolve
   // correctly at runtime instead of breaking when Next.js bundles server code.
-  serverExternalPackages: ["pdf-parse"],
+  // Note: Next.js 14 uses experimental.serverComponentsExternalPackages (renamed in v15).
+  experimental: {
+    serverComponentsExternalPackages: ["pdf-parse"],
+  },
 
   async headers() {
     return [
