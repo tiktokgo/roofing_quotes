@@ -218,22 +218,44 @@ export default function ChatPage({ aiContext }: Props) {
   const handleVoice = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
-    if (!SR) return;
-    if (isRecording) { recognitionRef.current?.stop(); return; }
+    if (!SR) {
+      alert("Voice input is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      return;
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rec = new SR() as any;
     rec.lang = "en-US";
     rec.interimResults = false;
+    rec.continuous = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
       const transcript = e.results[0][0].transcript as string;
       setInput((prev) => (prev ? prev + " " + transcript : transcript));
     };
     rec.onend = () => setIsRecording(false);
-    rec.onerror = () => setIsRecording(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onerror = (e: any) => {
+      setIsRecording(false);
+      if (e.error === "not-allowed" || e.error === "permission-denied") {
+        alert("Microphone access was denied. Please allow microphone access in your browser settings and try again.");
+      } else if (e.error === "no-speech") {
+        // silent — user just didn't speak
+      } else {
+        console.error("Speech recognition error:", e.error);
+      }
+    };
     recognitionRef.current = rec;
-    rec.start();
-    setIsRecording(true);
+    try {
+      rec.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Failed to start speech recognition:", err);
+      alert("Could not start voice recording. If this page is embedded in another site, microphone access may be blocked.");
+    }
   }, [isRecording]);
 
   useEffect(() => {
