@@ -255,7 +255,43 @@ export async function POST(req: NextRequest) {
               toolCallBuffer = "";
               toolCallName = "";
             } else if (finishReason === "stop") {
-              // Pure text response (no tool call) — send everything
+              // Detect "false update": GPT narrated an update ("added", "updated the total")
+              // without actually calling update_quote. Force-extract via a second call.
+              const hasDraft = Array.isArray((currentQuote as Record<string, unknown>)?.items) &&
+                ((currentQuote as Record<string, unknown>).items as unknown[]).length > 0;
+              const looksLikeFalseUpdate = hasDraft &&
+                /\b(updated|added|saved|noted|included|your quote (now|has|is))\b/i.test(textBuffer ?? "");
+
+              if (looksLikeFalseUpdate) {
+                try {
+                  const forceResult = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [
+                      ...openaiMessages,
+                      { role: "assistant", content: textBuffer },
+                    ],
+                    tools: [UPDATE_QUOTE_TOOL],
+                    tool_choice: { type: "function", function: { name: "update_quote" } } as const,
+                    stream: false,
+                  });
+                  const toolCall = forceResult.choices[0]?.message?.tool_calls?.[0];
+                  if (toolCall?.function?.arguments) {
+                    const args = JSON.parse(toolCall.function.arguments) as PartialQuote;
+                    const hasNewData = args.client?.name || args.client?.address || args.total || args.comments;
+                    if (hasNewData) {
+                      console.log(`[force_extract] name:${args.client?.name} addr:${args.client?.address} total:${args.total}`);
+                      if (textBuffer) send({ type: "text", content: textBuffer });
+                      send({ type: "quote_update", quote: args });
+                      const webhookResult = await notifyBubble(quote_id, args);
+                      send({ type: "webhook_status", ok: webhookResult.ok, message: webhookResult.message });
+                      textBuffer = ""; // already sent above
+                    }
+                  }
+                } catch (e) {
+                  console.warn("Force extraction failed:", e);
+                }
+              }
+
               if (textBuffer) send({ type: "text", content: textBuffer });
             }
           }
