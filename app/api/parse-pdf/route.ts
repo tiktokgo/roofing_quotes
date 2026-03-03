@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFParse } from "pdf-parse";
 
 // pdfjs-dist (used internally by pdf-parse) calls DOMMatrix which is browser-only.
 // Polyfill it for Node.js so the server-side text extraction doesn't crash.
@@ -37,7 +36,13 @@ if (typeof globalThis.DOMMatrix === "undefined") {
 }
 
 export async function POST(req: NextRequest) {
-  let parser: PDFParse | null = null;
+  // Dynamic import AFTER the DOMMatrix polyfill above has run.
+  // A top-level static import would be hoisted and execute before the polyfill,
+  // causing pdfjs-dist to crash with "DOMMatrix is not defined".
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { data: Buffer }) => { getText(): Promise<{ text: string; total: number }>; destroy(): Promise<void> } };
+
+  let parser: InstanceType<typeof PDFParse> | null = null;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
