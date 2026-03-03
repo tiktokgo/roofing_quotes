@@ -318,24 +318,24 @@ export default function ChatPage({ aiContext }: Props) {
     >
       <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileUpload} />
 
-      {/* Upload button (shown in chat mode only) */}
+      {/* Upload Quote button (shown in chat mode only) */}
       {hasUserMessages && (
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading || isUploading}
-          title="Improve current quote from PDF"
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+          className="flex items-center gap-1.5 px-3 h-8 rounded-xl flex-shrink-0 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium whitespace-nowrap"
+          style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.35)", color: "rgba(167,139,250,0.9)" }}
         >
           {isUploading ? (
-            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2">
+            <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
             </svg>
           ) : (
-            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="rgba(255,255,255,0.6)">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
           )}
+          Upload Quote
         </button>
       )}
 
@@ -507,7 +507,7 @@ export default function ChatPage({ aiContext }: Props) {
                   <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                 </svg>
               )}
-              Improve quote
+              Upload Quote
             </button>
 
             {/* Voice chip */}
