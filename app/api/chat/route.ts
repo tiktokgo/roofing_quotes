@@ -80,16 +80,13 @@ function toBubblePayload(quote_id: string | undefined, quote: PartialQuote): Rec
   if (quote.client?.name)     payload.client_name    = quote.client.name;
   if (quote.client?.address)  payload.client_address = quote.client.address;
   if (quote.items && quote.items.length > 0) {
-    // Bubble can't receive nested objects — send items as a JSON string (text field in Bubble)
-    payload.items = JSON.stringify(
-      quote.items
-        .filter((item) => item.name || item.description)
-        .map((item) => ({
-          name:        item.name ?? "",
-          description: item.description ?? "",
-          price:       item.total ?? 0,
-        }))
-    );
+    payload.items = quote.items
+      .filter((item) => item.name || item.description)
+      .map((item) => ({
+        name:        item.name ?? "",
+        description: item.description ?? "",
+        price:       item.total ?? 0,
+      }));
   }
   if (quote.total    !== undefined)           payload.total    = quote.total;
   if (quote.warranty)                         payload.warranty = quote.warranty;
