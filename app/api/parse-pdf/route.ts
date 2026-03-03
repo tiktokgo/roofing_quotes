@@ -11,15 +11,16 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // pdf-parse is a CJS module; use require to avoid ESM interop issues on Vercel
+    // Use lib/pdf-parse.js directly to avoid pdf-parse's broken test-file
+    // initialization that crashes on Vercel (tries to read test data from disk).
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+    const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
     const data = await pdfParse(buffer);
 
     return NextResponse.json({ text: data.text, pages: data.numpages });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("PDF parse error:", message);
-    return NextResponse.json({ error: "Failed to parse PDF" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
