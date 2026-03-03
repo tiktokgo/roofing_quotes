@@ -120,6 +120,7 @@ async function notifyBubble(quote_id: string | undefined, quote: PartialQuote) {
         ...(key ? { Authorization: `Bearer ${key}` } : {}),
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -222,8 +223,8 @@ export async function POST(req: NextRequest) {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
                 send({ type: "quote_update", quote: args });
                 await notifyBubble(quote_id, args);
-              } catch {
-                // malformed tool args — skip
+              } catch (e) {
+                console.warn("Malformed tool args from GPT:", toolCallBuffer.slice(0, 200), e);
               }
               toolCallBuffer = "";
               toolCallName = "";

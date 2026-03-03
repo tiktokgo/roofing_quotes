@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { AIContext } from "@/lib/verifyToken";
 import type { Quote, PartialQuote } from "@/lib/quoteSchema";
+import QuotePanel from "./QuotePanel";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -349,9 +350,14 @@ export default function ChatPage({ aiContext }: Props) {
 
   return (
     <div
-      className="flex flex-col h-screen"
+      className="flex h-screen"
       style={{ background: "linear-gradient(160deg, #0a0f1e 0%, #0f0a1e 50%, #0a1628 100%)" }}
     >
+      {/* ─── LEFT: Chat column ──────────────────────────────── */}
+      <div
+        className="flex flex-col flex-shrink-0"
+        style={{ width: "400px", borderRight: "1px solid rgba(255,255,255,0.08)" }}
+      >
       {/* Header */}
       <div
         className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
@@ -374,14 +380,6 @@ export default function ChatPage({ aiContext }: Props) {
             AI Quote Assistant
           </div>
         </div>
-        {quoteUpdateCount > 0 && (
-          <div
-            className="ml-auto text-xs font-medium px-2.5 py-1 rounded-full"
-            style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399" }}
-          >
-            Draft updated {quoteUpdateCount}×
-          </div>
-        )}
       </div>
 
       {/* ── LANDING STATE (no messages yet) ── */}
@@ -545,6 +543,46 @@ export default function ChatPage({ aiContext }: Props) {
           </div>
         </>
       )}
+      </div>{/* end left chat column */}
+
+      {/* ─── RIGHT: Quote panel ─────────────────────────────── */}
+      <div
+        className="flex-1 flex flex-col overflow-hidden"
+        style={{ background: "rgba(0,0,0,0.12)" }}
+      >
+        <div
+          className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            backdropFilter: "blur(12px)",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="rgba(255,255,255,0.4)">
+              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-white leading-tight">Quote Draft</div>
+            <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {quoteUpdateCount > 0 ? `Updated ${quoteUpdateCount}×` : "Waiting for job details…"}
+            </div>
+          </div>
+          {quoteUpdateCount > 0 && (
+            <span
+              className="ml-auto text-xs font-medium px-2.5 py-1 rounded-full"
+              style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399" }}
+            >
+              ✓ Live
+            </span>
+          )}
+        </div>
+        <QuotePanel quote={currentQuote} />
+      </div>
     </div>
   );
 }
