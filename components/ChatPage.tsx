@@ -110,6 +110,7 @@ export default function ChatPage({ aiContext }: Props) {
               return updated;
             });
           } else if (event.type === "quote_update" && event.quote) {
+            console.log("[quote_update] items:", event.quote.items?.length ?? 0, event.quote.items?.map(i => i.name));
             mergeQuote(event.quote);
             hasQuoteUpdate = true;
           } else if (event.type === "done") {

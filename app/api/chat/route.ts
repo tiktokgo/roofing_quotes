@@ -227,6 +227,8 @@ export async function POST(req: NextRequest) {
 
               try {
                 const args = JSON.parse(toolCallBuffer) as PartialQuote;
+                console.log(`[update_quote] items:${args.items?.length ?? 0} total:${args.total} title:${args.title}`);
+                if (args.items) args.items.forEach((it, i) => console.log(`  item[${i}]: ${it.name} — ${it.total}`));
                 send({ type: "quote_update", quote: args });
                 const webhookResult = await notifyBubble(quote_id, args);
                 send({ type: "webhook_status", ok: webhookResult.ok, message: webhookResult.message });
