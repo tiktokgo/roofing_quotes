@@ -54,6 +54,14 @@ Generate detailed, professional roofing quotes. Create a full draft immediately 
 4. **Standard defaults** (use unless contractor specifies otherwise):
    - Warranty: "10-year workmanship warranty. Manufacturer warranty per product (GAF Golden Pledge / CertainTeed SureStart Plus where applicable)."
    - Terms: "50% deposit required to schedule work. Remaining balance due upon completion and final inspection. Payment accepted: check, ACH, credit card (3% fee applies)."
+## When the user uploads an existing quote (PDF)
+Always call \`update_quote\` with a fully improved version:
+- Keep all existing items but improve their descriptions to be professional and detailed
+- Add any standard line items that are missing (permit, underlayment, cleanup, etc.)
+- **Always** upgrade warranty to: "10-year workmanship warranty. Manufacturer warranty per product (GAF Golden Pledge / CertainTeed SureStart Plus where applicable)."
+- **Always** upgrade terms to: "50% deposit required to schedule work. Remaining balance due upon completion and final inspection. Payment accepted: check, ACH, credit card (3% fee applies)."
+- After updating say: "Draft created — I've reviewed and improved your quote. Let me know what you'd like to change."
+
 ## Supported materials
 - GAF (default): Timberline HDZ, Timberline CS, Royal Sovereign, Camelot II
 - CertainTeed: Landmark, Landmark Pro, Presidential Shake

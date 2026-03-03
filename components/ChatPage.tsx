@@ -22,6 +22,10 @@ export default function ChatPage({ aiContext }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [currentQuote, setCurrentQuote] = useState<Partial<Quote>>({});
   const [quoteUpdateCount, setQuoteUpdateCount] = useState(0);
+  // Context prepended to the user's next message (set by quick-action chips)
+  const [pendingContext, setPendingContext] = useState<string | null>(null);
+  // Controls transition from landing → chat without a user message
+  const [chatStarted, setChatStarted] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,6 +34,7 @@ export default function ChatPage({ aiContext }: Props) {
   const recognitionRef = useRef<any>(null);
 
   const hasUserMessages = messages.some((m) => m.role === "user");
+  const isLanding = !chatStarted && !hasUserMessages;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -122,18 +127,25 @@ export default function ChatPage({ aiContext }: Props) {
   );
 
   const handleSend = useCallback(async (overrideText?: string) => {
-    const text = (overrideText ?? input).trim();
-    if (!text || isLoading) return;
+    const raw = (overrideText ?? input).trim();
+    if (!raw || isLoading) return;
+    // Prepend job-type context set by quick-action chips
+    const text = pendingContext ? `${pendingContext}: ${raw}` : raw;
+    setPendingContext(null);
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const userMsg: ChatMessage = { role: "user", content: raw }; // show only raw text in UI
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const allMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
-      await streamChat(allMessages);
+      // Use `text` (with context prefix) for API, but `userMsg` (raw) for display
+      const apiMessages = [
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user" as const, content: text },
+      ];
+      await streamChat(apiMessages);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setMessages((prev) => {
@@ -144,7 +156,7 @@ export default function ChatPage({ aiContext }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, streamChat]);
+  }, [input, isLoading, messages, pendingContext, streamChat]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -158,6 +170,12 @@ export default function ChatPage({ aiContext }: Props) {
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file) return;
 
+    // Transition to chat mode immediately and show scanning feedback
+    setChatStarted(true);
+    const uploadDisplayMsg: ChatMessage = { role: "user", content: `📄 ${file.name}` };
+    const scanMsg: ChatMessage = { role: "assistant", content: "Scanning your file…" };
+    setMessages([uploadDisplayMsg, scanMsg]);
+
     setIsUploading(true);
     const formData = new FormData();
     formData.append("file", file);
@@ -167,15 +185,22 @@ export default function ChatPage({ aiContext }: Props) {
       if (!res.ok) throw new Error("Failed to parse PDF");
       const { text } = await res.json() as { text: string };
 
-      const userMsg: ChatMessage = {
-        role: "user",
+      // Hidden API message with full PDF content; display message already shown above
+      const apiUserMsg = {
+        role: "user" as const,
         content: `Here is an existing roofing quote I want you to review and improve:\n\n${text.slice(0, 8000)}`,
       };
-      setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      // Replace scanning message with empty AI response placeholder (streaming will fill it)
+      setMessages((prev) => {
+        const withoutScan = prev.filter((m) => m.content !== "Scanning your file…");
+        return [...withoutScan, { role: "assistant", content: "" }];
+      });
 
-      const allMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const allMessages = [
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        apiUserMsg,
+      ];
       await streamChat(allMessages);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -338,7 +363,7 @@ export default function ChatPage({ aiContext }: Props) {
       </div>
 
       {/* ── LANDING STATE (no messages yet) ── */}
-      {!hasUserMessages ? (
+      {isLanding ? (
         <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8">
           {/* Headline */}
           <div className="mb-8 text-center">
@@ -358,7 +383,11 @@ export default function ChatPage({ aiContext }: Props) {
           <div className="flex flex-wrap gap-2 justify-center">
             {/* New roof */}
             <button
-              onClick={() => handleSend("New roof installation")}
+              onClick={() => {
+                setChatStarted(true);
+                setPendingContext("New roof installation");
+                setMessages([{ role: "assistant", content: "What materials are you planning to use? (e.g. GAF Timberline HDZ shingles, metal, tile, flat TPO…)" }]);
+              }}
               disabled={isLoading}
               className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-40"
               style={{
@@ -375,7 +404,11 @@ export default function ChatPage({ aiContext }: Props) {
 
             {/* Roof fix */}
             <button
-              onClick={() => handleSend("Roof repair / leak fix")}
+              onClick={() => {
+                setChatStarted(true);
+                setPendingContext("Roof repair");
+                setMessages([{ role: "assistant", content: "What's the issue that needs fixing? (e.g. active leak, damaged shingles, flashing, ponding water…)" }]);
+              }}
               disabled={isLoading}
               className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-40"
               style={{
