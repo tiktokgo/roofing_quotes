@@ -392,7 +392,7 @@ export default function ChatPage({ aiContext }: Props) {
   return (
     <div
       className="flex flex-col h-screen"
-      style={{ background: "linear-gradient(160deg, #0a0f1e 0%, #0f0a1e 50%, #0a1628 100%)" }}
+      style={{ background: "linear-gradient(180deg, #0a0f1e 0%, #0f0a1e 50%, #0a1628 100%)" }}
     >
       {/* Header */}
       <div
