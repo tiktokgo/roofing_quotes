@@ -131,7 +131,7 @@ async function notifyBubble(
       return { ok: false, message: `HTTP ${res.status}: ${body.slice(0, 120)}` };
     }
     console.log(`Bubble webhook OK: HTTP ${res.status}`);
-    return { ok: true, message: "ok" };
+    return { ok: true, message: quote_id ? `ok (quote_id: ${quote_id})` : "ok (no quote_id)" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Bubble webhook network error:", msg);
