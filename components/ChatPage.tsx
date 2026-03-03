@@ -4,6 +4,31 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { AIContext } from "@/lib/verifyToken";
 import type { Quote, PartialQuote } from "@/lib/quoteSchema";
 
+function RoofingLoader() {
+  return (
+    <>
+      <style>{`
+        @keyframes rf-shingle {
+          0%, 100% { opacity: 0; transform: translateY(5px); }
+          30%, 70%  { opacity: 1; transform: translateY(0);  }
+        }
+        .rf-s  { animation: rf-shingle 2.1s ease-in-out infinite; }
+        .rf-s1 { animation-delay: 0s;     }
+        .rf-s2 { animation-delay: 0.32s;  }
+        .rf-s3 { animation-delay: 0.64s;  }
+      `}</style>
+      <svg width="46" height="36" viewBox="0 0 46 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Building quote…">
+        {/* Roof outline */}
+        <path d="M23 3L43 20H3L23 3Z" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" strokeLinejoin="round"/>
+        {/* Shingle rows — bottom (eave) → top (ridge), appear in that order */}
+        <rect className="rf-s rf-s1" x="3"    y="20"   width="40" height="4.5" rx="1" fill="rgba(124,58,237,0.30)"/>
+        <rect className="rf-s rf-s2" x="10"   y="14.5" width="26" height="4.5" rx="1" fill="rgba(124,58,237,0.55)"/>
+        <rect className="rf-s rf-s3" x="16.5" y="9"    width="13" height="4.5" rx="1" fill="rgba(139,92,246,0.85)"/>
+      </svg>
+    </>
+  );
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -530,11 +555,7 @@ export default function ChatPage({ aiContext }: Props) {
                 >
                   {msg.content}
                   {msg.role === "assistant" && i === messages.length - 1 && isLoading && !msg.content && (
-                    <span className="inline-flex gap-1 items-center">
-                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "#7c3aed", animationDelay: "0ms" }} />
-                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "#7c3aed", animationDelay: "150ms" }} />
-                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "#7c3aed", animationDelay: "300ms" }} />
-                    </span>
+                    <RoofingLoader />
                   )}
                   {msg.quoteUpdated && (
                     <div
@@ -542,17 +563,6 @@ export default function ChatPage({ aiContext }: Props) {
                       style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.25)", color: "#34d399" }}
                     >
                       ✓ Draft updated
-                    </div>
-                  )}
-                  {msg.webhookStatus && (
-                    <div
-                      className="mt-1 text-xs font-medium inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                      style={msg.webhookStatus.ok
-                        ? { background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", color: "#34d399" }
-                        : { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }
-                      }
-                    >
-                      {msg.webhookStatus.ok ? "✓ Sent to Bubble" : `✗ ${msg.webhookStatus.message}`}
                     </div>
                   )}
                 </div>
