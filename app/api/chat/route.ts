@@ -6,6 +6,17 @@ import type { Quote, PartialQuote } from "@/lib/quoteSchema";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+/** Return the next question to ask based on which required fields are still missing. */
+function nextMissingField(current: Partial<Quote> | undefined, fresh: PartialQuote): string {
+  const name    = fresh.client?.name    ?? current?.client?.name;
+  const address = fresh.client?.address ?? current?.client?.address;
+  const total   = fresh.total           ?? current?.total;
+  if (!name)    return "What's the client's name for this job?";
+  if (!address) return "And the client's address?";
+  if (!total)   return "What's the total you'd like to charge for this job?";
+  return "Your quote is ready — review it and let me know if you want to change anything.";
+}
+
 /** Keep at most the first `max` sentences from a block of text. */
 const firstSentences = (text: string, max: number): string => {
   const trimmed = text.trim();
@@ -230,6 +241,12 @@ export async function POST(req: NextRequest) {
                 console.log(`[update_quote] items:${args.items?.length ?? 0} total:${args.total} title:${args.title}`);
                 if (args.items) args.items.forEach((it, i) => console.log(`  item[${i}]: ${it.name} — ${it.total}`));
                 send({ type: "quote_update", quote: args });
+
+                // If GPT generated no text, send a fallback question for the next missing field
+                if (!brief) {
+                  send({ type: "text", content: nextMissingField(currentQuote, args) });
+                }
+
                 const webhookResult = await notifyBubble(quote_id, args);
                 send({ type: "webhook_status", ok: webhookResult.ok, message: webhookResult.message });
               } catch (e) {
