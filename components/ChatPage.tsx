@@ -195,7 +195,10 @@ export default function ChatPage({ aiContext }: Props) {
 
     try {
       const res = await fetch("/api/parse-pdf", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Failed to parse PDF");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(errBody.error ?? `HTTP ${res.status}`);
+      }
       const { text } = await res.json() as { text: string };
 
       // Hidden API message with full PDF content; display message already shown above
