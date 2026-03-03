@@ -36,13 +36,6 @@ if (typeof globalThis.DOMMatrix === "undefined") {
 }
 
 export async function POST(req: NextRequest) {
-  // Dynamic import AFTER the DOMMatrix polyfill above has run.
-  // A top-level static import would be hoisted and execute before the polyfill,
-  // causing pdfjs-dist to crash with "DOMMatrix is not defined".
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { data: Buffer }) => { getText(): Promise<{ text: string; total: number }>; destroy(): Promise<void> } };
-
-  let parser: InstanceType<typeof PDFParse> | null = null;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -53,16 +46,17 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // pdf-parse v2: class-based API
-    parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
+    // Use lib/pdf-parse.js directly (v1.1.1) to skip the broken test-file
+    // initialisation in index.js that crashes on Vercel (reads test data from disk).
+    // require() is inside the handler so the DOMMatrix polyfill above runs first.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+    const data = await pdfParse(buffer);
 
-    return NextResponse.json({ text: result.text, pages: result.total });
+    return NextResponse.json({ text: data.text, pages: data.numpages });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("PDF parse error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
-  } finally {
-    await parser?.destroy();
   }
 }
