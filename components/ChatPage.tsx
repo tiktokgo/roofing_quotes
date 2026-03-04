@@ -56,6 +56,7 @@ export default function ChatPage({ aiContext }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const extractFileInputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
@@ -257,6 +258,55 @@ export default function ChatPage({ aiContext }: Props) {
     }
   }, [messages, streamChat, isLoading, isUploading]);
 
+  const handleExtractUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (extractFileInputRef.current) extractFileInputRef.current.value = "";
+    if (!file || isLoading || isUploading) return;
+
+    setChatStarted(true);
+    setMessages([
+      { role: "user", content: `📄 ${file.name}` },
+      { role: "assistant", content: "Scanning your quote…" },
+    ]);
+    setIsUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/parse-pdf", { method: "POST", body: formData });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(errBody.error ?? `HTTP ${res.status}`);
+      }
+      const { text } = await res.json() as { text: string };
+
+      const apiUserMsg = {
+        role: "user" as const,
+        content: `EXTRACT ONLY — map the fields from this PDF exactly as written. Do NOT add items. Do NOT change descriptions. Do NOT upgrade warranty or terms. Extract only what is present in the document:\n\n${text.slice(0, 8000)}`,
+      };
+      setIsLoading(true);
+      setMessages((prev) => [
+        ...prev.filter((m) => m.content !== "Scanning your quote…"),
+        { role: "assistant", content: "" },
+      ]);
+      await streamChat([
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        apiUserMsg,
+      ]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: "assistant", content: `Error reading PDF: ${msg}` };
+        return updated;
+      });
+    } finally {
+      setIsUploading(false);
+      setIsLoading(false);
+    }
+  }, [messages, streamChat, isLoading, isUploading]);
+
   const handleVoice = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
@@ -317,11 +367,12 @@ export default function ChatPage({ aiContext }: Props) {
       }}
     >
       <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileUpload} />
+      <input ref={extractFileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleExtractUpload} />
 
       {/* Upload Quote button (shown in chat mode only) */}
       {hasUserMessages && (
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => extractFileInputRef.current?.click()}
           disabled={isLoading || isUploading}
           className="flex items-center gap-1.5 px-3 h-8 rounded-xl flex-shrink-0 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium whitespace-nowrap"
           style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.35)", color: "rgba(167,139,250,0.9)" }}
@@ -507,26 +558,30 @@ export default function ChatPage({ aiContext }: Props) {
                   <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                 </svg>
               )}
-              Upload Quote
+              Improve quote
             </button>
 
-            {/* Voice chip */}
+            {/* Upload Quote chip (extract-only) */}
             <button
-              onClick={handleVoice}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-40 relative"
+              onClick={() => extractFileInputRef.current?.click()}
+              disabled={isLoading || isUploading}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-40"
               style={{
-                background: isRecording ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.07)",
-                border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.14)",
-                color: isRecording ? "#ef4444" : "rgba(255,255,255,0.8)",
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                color: "rgba(255,255,255,0.8)",
               }}
             >
-              {isRecording && <span className="absolute inset-0 rounded-full animate-ping" style={{ background: "rgba(239,68,68,0.2)" }} />}
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="2" width="6" height="12" rx="3" />
-                <path d="M5 10a7 7 0 0014 0M12 19v3M8 22h8" />
-              </svg>
-              {isRecording ? "Listening…" : "Voice"}
+              {isUploading ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+              Upload Quote
             </button>
           </div>
         </div>
